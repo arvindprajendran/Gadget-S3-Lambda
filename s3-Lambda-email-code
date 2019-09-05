@@ -1,0 +1,56 @@
+import json
+import boto3
+
+def lambda_handler(event, context):
+    
+    for i in event["Records"]:
+        action = i["eventName"]
+        region = i["awsRegion"]
+        ip = i["requestParameters"]["sourceIPAddress"]
+        bucket_name = i["s3"]["bucket"]["name"]
+        object = i["s3"]["object"]["key"]
+        object2 = i["s3"]["object"]["key"]
+        time = i["eventTime"]
+
+    client = boto3.client("ses")
+    object2 = object2.replace("Completed/","")
+    
+
+## --- Code added to get the recipient list from S3 and send email to the list when new document is generated ---
+
+    s3 = boto3.client('s3')
+    data = s3.get_object(Bucket='040-0000-0ff1000', Key='Email-list.csv')
+    contents = data['Body'].read().decode('utf-8').split('\r\n')
+    external = contents[:-1]
+    
+    
+## --- Code added to include Gadget's internal network address for notification ---    
+    internal=["cesnotifications@gadgetsoftware.com"]
+    des=external+internal
+    
+    
+    subject =  '040-0000-0ff1000-' + '  ' + object2 + '  ' +'Atomized' 
+    body = """
+        <br>
+        
+        Hi there!
+        <br><br>
+        We have atomized a new file <b> {} </b>! You're all ready to view that from your bucket <b> {} </b>.
+        
+        <br><br>
+        <b>Bucket Name : </b>  {} <br>
+        <b>Object Added : </b> {} <br>
+        <b>Event Time : </b> {} <br>
+        <b>Source IP: </b> {} <br>
+        
+        
+        <br><br>
+        
+        Thanks,<br>
+        The GadgetSoftware Team
+        
+    """.format(object, bucket_name, bucket_name, object, time, ip)
+    
+    message = {"Subject": {"Data": subject}, "Body": {"Html": {"Data": body}}}
+    
+    response = client.send_email(Source = "ace@gadgetsoftware.com", Destination ={"ToAddresses": des}, Message = message)
